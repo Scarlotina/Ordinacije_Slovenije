@@ -1,3 +1,4 @@
+import io.github.cdimascio.dotenv.Dotenv;
 import javax.swing.*;
 import java.awt.*;
 import java.sql.*;
@@ -13,11 +14,13 @@ public class DatabaseUI {
     private JButton showLogButton;
 
     // your connection info
-    private final String url      = "jdbc:postgresql://ep-little-mouse-a96ghw1s-pooler.gwc.azure.neon.tech:5432/neondb?sslmode=require";
-    private final String username = "neondb_owner";
-    private final String password = "npg_DJ2q5CahBrcm";
-
+    Dotenv dotenv = Dotenv.load();
+    String dbUrl = dotenv.get("db_url");
+    String dbUsername = dotenv.get("db_username");
+    String dbPassword = dotenv.get("db_password");
     public DatabaseUI() {
+
+
         panel1 = new JPanel(new BorderLayout());
 
         // --- tabs ---
@@ -58,7 +61,7 @@ public class DatabaseUI {
         model.setRowCount(0);
         model.setColumnCount(0);
         String sql = "SELECT * FROM get_ordinacija_data('')";
-        try (Connection c = DriverManager.getConnection(url, username, password);
+        try (Connection c = DriverManager.getConnection(dbUrl, dbUsername, dbPassword);
              PreparedStatement p = c.prepareStatement(sql);
              ResultSet rs = p.executeQuery())
         {
@@ -86,7 +89,7 @@ public class DatabaseUI {
         JTable logTable = new JTable(logModel);
 
         String sql = "SELECT * FROM ordinacija_log ORDER BY log_id";
-        try (Connection c = DriverManager.getConnection(url, username, password);
+        try (Connection c = DriverManager.getConnection(dbUrl, dbUsername, dbPassword);
              PreparedStatement p = c.prepareStatement(sql);
              ResultSet rs = p.executeQuery())
         {
@@ -187,7 +190,7 @@ public class DatabaseUI {
         }
 
         String sql = "SELECT update_ordinacija_data(?, ?, ?, ?, ?, ?)";
-        try (Connection c = DriverManager.getConnection(url, username, password);
+        try (Connection c = DriverManager.getConnection(dbUrl, dbUsername, dbPassword);
              PreparedStatement p = c.prepareStatement(sql))
         {
             p.setString(1, ordinacijaName);
@@ -210,7 +213,7 @@ public class DatabaseUI {
 
     private int getLocationId(String location) {
         String q = "SELECT get_location_id(?)";
-        try (Connection c = DriverManager.getConnection(url, username, password);
+        try (Connection c = DriverManager.getConnection(dbUrl, dbUsername, dbPassword);
              PreparedStatement p = c.prepareStatement(q))
         {
             p.setString(1, location);
@@ -225,7 +228,7 @@ public class DatabaseUI {
 
     private int getSpecializationId(String specialization) {
         String q = "SELECT get_specialization_id(?)";
-        try (Connection c = DriverManager.getConnection(url, username, password);
+        try (Connection c = DriverManager.getConnection(dbUrl, dbUsername, dbPassword);
              PreparedStatement p = c.prepareStatement(q))
         {
             p.setString(1, specialization);
