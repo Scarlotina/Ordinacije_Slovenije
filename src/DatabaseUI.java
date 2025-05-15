@@ -29,69 +29,93 @@ public class DatabaseUI {
         editButton = new JButton("Edit Selected Ordinacija");
         panel1.add(editButton, BorderLayout.SOUTH);
 
-        updateButton.addActionListener(e -> updateData());
+        updateButton.addActionListener(e -> {
+            String ordinacijaName = "exampleName";  // Replace with actual data
+            String newIme = "exampleIme";  // Replace with actual data
+            String newContact = "exampleContact";  // Replace with actual data
+            String newWorkingHours = "exampleHours";  // Replace with actual data
+            String newLocation = "exampleLocation";  // Replace with actual data
+            String newSpecialization = "exampleSpecialization";  // Replace with actual data
+
+            updateData(ordinacijaName, newIme, newContact, newWorkingHours, newLocation, newSpecialization);
+        });
         editButton.addActionListener(e -> editOrdinacija());
 
         loadData();
     }
+    String url = "jdbc:postgresql://ep-little-mouse-a96ghw1s-pooler.gwc.azure.neon.tech:5432/neondb?sslmode=require";
+    String username = "neondb_owner"; // Your username
+    String password = "npg_DJ2q5CahBrcm"; // Your password
 
     private void loadData() {
-        String url = "jdbc:postgresql://ep-little-mouse-a96ghw1s-pooler.gwc.azure.neon.tech/neondb?sslmode=require";
-        String username = "neondb_owner";
-        String password = "npg_DJ2q5CahBrcm";
+        // 1) Wipe out everything from the model
+        model.setRowCount(0);
+        model.setColumnCount(0);
 
-        String query = "SELECT * FROM get_ordinacija_data('')";  // Call the stored procedure with empty search
+        String query = "SELECT * FROM get_ordinacija_data('')";
 
         try (Connection connection = DriverManager.getConnection(url, username, password);
-             PreparedStatement stmt = connection.prepareStatement(query)) {
+             PreparedStatement stmt = connection.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
 
-            ResultSet rs = stmt.executeQuery();
-            ResultSetMetaData metaData = rs.getMetaData();
-            int columnCount = metaData.getColumnCount();
-            model.setColumnCount(0);
+            ResultSetMetaData meta = rs.getMetaData();
+            int cols = meta.getColumnCount();
 
-            for (int i = 1; i <= columnCount; i++) {
-                model.addColumn(metaData.getColumnName(i));
+            // 2) Add columns
+            for (int i = 1; i <= cols; i++) {
+                model.addColumn(meta.getColumnName(i));
             }
 
+            // 3) Add rows
             while (rs.next()) {
-                Object[] row = new Object[columnCount];
-                for (int i = 1; i <= columnCount; i++) {
+                Object[] row = new Object[cols];
+                for (int i = 1; i <= cols; i++) {
                     row[i - 1] = rs.getObject(i);
                 }
                 model.addRow(row);
             }
+
         } catch (SQLException e) {
             e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error loading data: " + e.getMessage());
         }
     }
 
-    private void updateData() {
-        String url = "jdbc:postgresql://ep-little-mouse-a96ghw1s-pooler.gwc.azure.neon.tech:5432/neondb?sslmode=require";
-        String username = "neondb_owner";
-        String password = "npg_DJ2q5CahBrcm";
 
-        String query = "SELECT update_ordinacija_data(?, ?, ?, ?, ?, ?)";  // 6 parameters for the stored procedure
+    private void updateData(String ordinacijaName, String newIme, String newContact, String newWorkingHours, String newLocation, String newSpecialization) {
+        // Get location and specialization IDs
+        int locationId = getLocationId(newLocation);
+        int specializationId = getSpecializationId(newSpecialization);
+
+        // Check if either ID is -1 (not found)
+        if (locationId == -1 || specializationId == -1) {
+            JOptionPane.showMessageDialog(null, "Invalid Location or Specialization!");
+            return; // Stop the update if either is invalid
+        }
+
+        String query = "SELECT update_ordinacija_data(?, ?, ?, ?, ?, ?)"; // This line is fine
 
         try (Connection connection = DriverManager.getConnection(url, username, password);
              PreparedStatement stmt = connection.prepareStatement(query)) {
 
             // Pass all 6 parameters
-            stmt.setString(1, "Zobna Ordinacija Bežigrad");  // Ordinacija name
-            stmt.setString(2, "newContact@clinic.si");  // Contact
-            stmt.setString(3, "08:00-16:00");  // Working hours
-            stmt.setInt(4, getLocationId("Bežigrad"));  // Location ID (using a function to get location ID)
-            stmt.setInt(5, getSpecializationId("Dentistry"));  // Specialization ID (using a function to get specialization ID)
-            stmt.setInt(6, 1);  // Assuming the 6th parameter is some ID or value you need to pass.
+            stmt.setString(1, ordinacijaName);  // Ordinacija name
+            stmt.setString(2, newIme);  // New name
+            stmt.setString(3, newContact);  // New contact
+            stmt.setString(4, newWorkingHours);  // New working hours
+            stmt.setInt(5, locationId);  // Location ID
+            stmt.setInt(6, specializationId);  // Specialization ID
 
-            stmt.executeUpdate();  // Execute the update
+            // Use executeQuery instead of execute since it's a function
+            stmt.executeQuery(); // Executes the function (as opposed to a stored procedure)
 
-            loadData();  // Reload the data after update
+            // Reload the data after update
+            loadData();
         } catch (SQLException e) {
             e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Error updating data: " + e.getMessage());
         }
     }
-
 
 
     private void editOrdinacija() {
@@ -103,7 +127,7 @@ public class DatabaseUI {
             JFrame editFrame = new JFrame("Edit Ordinacija");
             editFrame.setSize(400, 300);
 
-            // Create fields to edit
+            // Create fields to edit, populate them with the current values from the selected row
             JTextField imeField = new JTextField((String) model.getValueAt(selectedRow, 0));
             JTextField contactField = new JTextField((String) model.getValueAt(selectedRow, 1));
             JTextField workingHoursField = new JTextField((String) model.getValueAt(selectedRow, 2));
@@ -131,7 +155,7 @@ public class DatabaseUI {
             // When confirm button is clicked, update the data
             confirmButton.addActionListener(e -> {
                 // Call updateData method to update the data in the database
-                updateData();  // This calls the updateData method you already have
+                updateData(ordinacijaName, imeField.getText(), contactField.getText(), workingHoursField.getText(), locationField.getText(), specializationField.getText());
                 editFrame.dispose();  // Close the edit window
             });
 
@@ -144,25 +168,30 @@ public class DatabaseUI {
     }
 
 
+
     private int getLocationId(String location) {
         String query = "SELECT get_location_id(?)";  // Call the function for location ID
-        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://...", "username", "password");
+        try (Connection connection = DriverManager.getConnection(url, username, password);
              PreparedStatement stmt = connection.prepareStatement(query)) {
 
             stmt.setString(1, location);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return rs.getInt(1);  // Return the ID
+            } else {
+                // If no location found, return -1 and handle the error in the updateData method
+                return -1;
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return -1;
+        return -1;  // In case of SQL error
     }
+
 
     private int getSpecializationId(String specialization) {
         String query = "SELECT get_specialization_id(?)";  // Call the function for specialization ID
-        try (Connection connection = DriverManager.getConnection("jdbc:postgresql://...", "username", "password");
+        try (Connection connection = DriverManager.getConnection(url, username, password);
              PreparedStatement stmt = connection.prepareStatement(query)) {
 
             stmt.setString(1, specialization);
